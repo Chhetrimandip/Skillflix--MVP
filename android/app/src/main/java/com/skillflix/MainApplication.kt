@@ -1,4 +1,4 @@
-package com.tempproject
+package com.skillflix
 
 import android.app.Application
 import com.facebook.react.PackageList
