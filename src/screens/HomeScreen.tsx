@@ -37,10 +37,14 @@ const videos = [
   },
 ];
 
-const VideoCard = ({ title, creator, avatar, videoUrl, likes, comments, shares }) => {
+const VideoCard = ({ title, creator, avatar, videoUrl, likes, comments, shares, paused: parentPaused }) => {
   const [paused, setPaused] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  React.useEffect(() => {
+    setPaused(parentPaused);
+  }, [parentPaused]);
 
   const onLoadStart = () => {
     setLoading(true);
@@ -49,7 +53,7 @@ const VideoCard = ({ title, creator, avatar, videoUrl, likes, comments, shares }
 
   const onLoad = () => {
     setLoading(false);
-    setPaused(false);
+    setPaused(parentPaused);
   };
 
   const onError = (err) => {
@@ -57,11 +61,17 @@ const VideoCard = ({ title, creator, avatar, videoUrl, likes, comments, shares }
     setLoading(false);
   };
 
+  const togglePause = () => {
+    if (!parentPaused) {
+      setPaused(!paused);
+    }
+  };
+
   return (
     <View style={styles.videoCard}>
       <TouchableOpacity 
         style={styles.videoContent}
-        onPress={() => setPaused(!paused)}
+        onPress={togglePause}
       >
         <Video
           source={videoUrl}
@@ -73,9 +83,10 @@ const VideoCard = ({ title, creator, avatar, videoUrl, likes, comments, shares }
           onLoad={onLoad}
           onError={onError}
           controls={false}
-          muted={true}
+          muted={false}
           playInBackground={false}
           playWhenInactive={false}
+          volume={1.0}
         />
         
         {loading && (
