@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,9 @@ import {
   FlatList,
   Image,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
+import Video from 'react-native-video';
 import Icon from 'react-native-vector-icons/Ionicons';
 
 const { width, height } = Dimensions.get('window');
@@ -18,7 +20,7 @@ const videos = [
     title: 'The Future of Artificial Intelligence',
     creator: 'Dr. Jane Smith',
     avatar: 'https://example.com/avatar1.jpg',
-    thumbnail: 'https://example.com/ai-thumbnail.jpg',
+    videoUrl: require('../assets/video1.mp4'),
     likes: '125K',
     comments: '1.2K',
     shares: '3.4K',
@@ -28,67 +30,132 @@ const videos = [
     title: 'Understanding Quantum Mechanics',
     creator: 'Prof. John Doe',
     avatar: 'https://example.com/avatar2.jpg',
-    thumbnail: 'https://example.com/quantum-thumbnail.jpg',
+    videoUrl: require('../assets/video1.mp4'),
     likes: '89K',
     comments: '956',
     shares: '2.1K',
   },
 ];
 
-const VideoCard = ({ title, creator, avatar, likes, comments, shares }) => (
-  <View style={styles.videoCard}>
-    <View style={styles.videoContent}>
-      {/* Video placeholder */}
-      <View style={styles.videoPlaceholder} />
-      
-      {/* Progress bar */}
-      <View style={styles.progressBarContainer}>
-        <View style={styles.progressBar} />
+const VideoCard = ({ title, creator, avatar, videoUrl, likes, comments, shares }) => {
+  const [paused, setPaused] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const onLoadStart = () => {
+    setLoading(true);
+    setError(null);
+  };
+
+  const onLoad = () => {
+    setLoading(false);
+    setPaused(false);
+  };
+
+  const onError = (err) => {
+    setError(err);
+    setLoading(false);
+  };
+
+  return (
+    <View style={styles.videoCard}>
+      <TouchableOpacity 
+        style={styles.videoContent}
+        onPress={() => setPaused(!paused)}
+      >
+        <Video
+          source={videoUrl}
+          style={styles.videoPlayer}
+          resizeMode="cover"
+          repeat
+          paused={paused}
+          onLoadStart={onLoadStart}
+          onLoad={onLoad}
+          onError={onError}
+          controls={false}
+          muted={true}
+          playInBackground={false}
+          playWhenInactive={false}
+        />
+        
+        {loading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#FFC21E" />
+          </View>
+        )}
+
+        {error && (
+          <View style={styles.errorContainer}>
+            <Icon name="alert-circle" size={24} color="white" />
+            <Text style={styles.errorText}>Failed to load video</Text>
+          </View>
+        )}
+
+        <View style={styles.progressBarContainer}>
+          <View style={styles.progressBar} />
+        </View>
+      </TouchableOpacity>
+
+      {/* Right side actions */}
+      <View style={styles.sideActions}>
+        <TouchableOpacity style={styles.actionButton}>
+          <Icon name="heart-outline" size={28} color="white" />
+          <Text style={styles.actionText}>{likes}</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.actionButton}>
+          <Icon name="chatbubble-outline" size={28} color="white" />
+          <Text style={styles.actionText}>{comments}</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.actionButton}>
+          <Icon name="share-social-outline" size={28} color="white" />
+          <Text style={styles.actionText}>{shares}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.avatarContainer}>
+          <Image source={{ uri: avatar }} style={styles.avatar} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Bottom content */}
+      <View style={styles.bottomContent}>
+        <Text style={styles.creator}>@{creator}</Text>
+        <Text style={styles.title} numberOfLines={2}>{title}</Text>
       </View>
     </View>
-
-    {/* Right side actions - Now with fixed positioning from bottom of videoCard */}
-    <View style={styles.sideActions}>
-      <TouchableOpacity style={styles.actionButton}>
-        <Icon name="heart-outline" size={28} color="white" />
-        <Text style={styles.actionText}>{likes}</Text>
-      </TouchableOpacity>
-      
-      <TouchableOpacity style={styles.actionButton}>
-        <Icon name="chatbubble-outline" size={28} color="white" />
-        <Text style={styles.actionText}>{comments}</Text>
-      </TouchableOpacity>
-      
-      <TouchableOpacity style={styles.actionButton}>
-        <Icon name="share-social-outline" size={28} color="white" />
-        <Text style={styles.actionText}>{shares}</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.avatarContainer}>
-        <Image source={{ uri: avatar }} style={styles.avatar} />
-      </TouchableOpacity>
-    </View>
-
-    {/* Bottom content - Now with fixed positioning from bottom of videoCard */}
-    <View style={styles.bottomContent}>
-      <Text style={styles.creator}>@{creator}</Text>
-      <Text style={styles.title} numberOfLines={2}>{title}</Text>
-    </View>
-  </View>
-);
+  );
+};
 
 export default function HomeScreen() {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const onViewableItemsChanged = React.useCallback(({ viewableItems }) => {
+    if (viewableItems.length > 0) {
+      setCurrentIndex(viewableItems[0].index);
+    }
+  }, []);
+
   return (
     <View style={styles.container}>
       <FlatList
         data={videos}
-        renderItem={({ item }) => <VideoCard {...item} />}
+        renderItem={({ item, index }) => (
+          <VideoCard 
+            {...item} 
+            paused={index !== currentIndex}
+          />
+        )}
         keyExtractor={(item) => item.id}
         pagingEnabled
         snapToInterval={height - 49}
         decelerationRate="fast"
         showsVerticalScrollIndicator={false}
         bounces={false}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={{
+          itemVisiblePercentThreshold: 50
+        }}
       />
     </View>
   );
@@ -101,15 +168,15 @@ const styles = StyleSheet.create({
   },
   videoCard: {
     width: width,
-    height: height - 49, // Consistent height for all cards
+    height: height - 49,
     backgroundColor: '#000',
-    position: 'relative', // Ensure this is the positioning context
+    position: 'relative',
   },
   videoContent: {
     flex: 1,
     position: 'relative',
   },
-  videoPlaceholder: {
+  videoPlayer: {
     flex: 1,
     backgroundColor: '#1a1a1a',
   },
@@ -130,7 +197,7 @@ const styles = StyleSheet.create({
     right: 8,
     bottom: 120,
     alignItems: 'center',
-    zIndex: 1, // Ensure it's above other content
+    zIndex: 1,
   },
   actionButton: {
     alignItems: 'center',
@@ -158,7 +225,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: 16,
-    zIndex: 1, // Ensure it's above other content
+    zIndex: 1,
   },
   creator: {
     color: 'white',
@@ -170,6 +237,31 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 14,
     marginRight: 64,
+  },
+  loadingContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  errorContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+  },
+  errorText: {
+    color: 'white',
+    marginTop: 8,
+    fontSize: 14,
   },
 });
 
